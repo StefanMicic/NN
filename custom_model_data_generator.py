@@ -1,3 +1,5 @@
+from typing import Generator
+
 import cv2
 import numpy as np
 from keras.preprocessing.sequence import pad_sequences
@@ -8,6 +10,9 @@ from data_generator import DataGenerator
 
 
 class CustomDataGenerator(DataGenerator):
+    """Data generation for image captioning model without pretrained
+    feature extractor."""
+
     def __init__(self, path_to_annotations: str):
         super().__init__(path_to_annotations)
 
@@ -28,7 +33,8 @@ class CustomDataGenerator(DataGenerator):
         )
         return new_im / 255
 
-    def __call__(self, num_photos_per_batch):
+    def __call__(self, num_photos_per_batch: int = 2) -> Generator:
+        """ Data generator"""
         X1, X2, y = list(), list(), list()
         n = 0
         while 1:

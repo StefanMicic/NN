@@ -11,15 +11,18 @@ from keras.layers import (
 from keras.layers.merge import add
 from keras.models import Model, Sequential
 
+from attention import Attention
 from custom_model_data_generator import CustomDataGenerator
 
 
 class CustomModel:
-    def __init__(self, path_to_annotations):
+    """Image captioning model without pretrained feature extractor."""
+
+    def __init__(self, path_to_annotations: str, attention: bool = False):
         self.dataGenerator = CustomDataGenerator(path_to_annotations)
         self.model = self.create_model()
 
-    def create_model(self):
+    def create_model(self, attention: bool = False) -> Model:
         conv_base = enet.EfficientNetB2(
             weights="imagenet",
             include_top=False,
@@ -43,6 +46,8 @@ class CustomModel:
         se2 = Dropout(0.5)(se1)
 
         se3 = LSTM(256)(se2)
+        if attention:
+            se3 = Attention()(se3)
 
         decoder1 = add([fe1, se3])
         decoder2 = Dense(256, activation="relu")(decoder1)
@@ -54,7 +59,7 @@ class CustomModel:
         model.summary()
         return model
 
-    def train(self, epochs, batch_size):
+    def train(self, epochs: int = 10, batch_size: int = 4) -> None:
         self.model.compile(loss="categorical_crossentropy", optimizer="adam")
         steps = len(self.dataGenerator.train_captions) // batch_size
         generator = self.dataGenerator(batch_size)

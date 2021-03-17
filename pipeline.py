@@ -1,11 +1,11 @@
-from custom_model import CustomModel
+# from custom_model import CustomModel
 from model import ImageCaptioningModel
 
 
 def main():
 
-    # model = ImageCaptioningModel("train_set/annotations.json")
-    model = CustomModel("train_set/annotations.json")
+    model = ImageCaptioningModel("train_set/annotations.json", False)
+    # model = CustomModel("train_set/annotations.json",True)
     model.train(1, 1)
 
 

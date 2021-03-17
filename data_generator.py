@@ -1,4 +1,5 @@
 import json
+from typing import Dict, Generator, Tuple
 
 import numpy as np
 from keras.applications.inception_v3 import InceptionV3, preprocess_input
@@ -8,9 +9,13 @@ from keras.preprocessing.sequence import pad_sequences
 from keras.utils import to_categorical
 from numpy import array
 
+from word2vec import Word2VecModel
+
 
 class DataGenerator:
-    def __init__(self, path_to_annotations: str):
+    """Data generator for model with InceptionV3."""
+
+    def __init__(self, path_to_annotations: str, train_word2vec: bool = False):
         with open(path_to_annotations, "r") as f:
             self.descriptions = json.load(f)
         self.image_paths, self.train_captions = self.get_image_paths()
@@ -20,8 +25,19 @@ class DataGenerator:
         self.model_new = self.create_encoder()
         self.encoding_train = self.get_encoded_features()
         self.vocab_size = len(self.ixtoword) + 1
+        if train_word2vec:
+            self.train_word2vec_model()
 
-    def __call__(self, num_photos_per_batch):
+    def train_word2vec_model(self) -> None:
+        """Preparing data for word2vec training."""
+        data = []
+        for key, desc_list in self.descriptions.items():
+            data.extend([caption.lower().split() for caption in desc_list])
+            word2vec = Word2VecModel(data)
+            word2vec()
+
+    def __call__(self, num_photos_per_batch) -> Generator:
+        """Generate batch for training. """
         X1, X2, y = list(), list(), list()
         n = 0
         while 1:
@@ -51,13 +67,15 @@ class DataGenerator:
                     X1, X2, y = list(), list(), list()
                     n = 0
 
-    def get_encoded_features(self):
+    def get_encoded_features(self) -> Dict:
+        """Pass every image through InceptionV3"""
         encoding_train = {}
         for img in self.image_paths:
             encoding_train[img] = self.encode(img)
         return encoding_train
 
-    def encode(self, image_path):
+    def encode(self, image_path) -> np.array:
+        """Calculates features with Inception model."""
         img = image.load_img(image_path, target_size=(299, 299))
         x = image.img_to_array(img)
         x = np.expand_dims(x, axis=0)
@@ -66,11 +84,13 @@ class DataGenerator:
         fea_vec = np.reshape(fea_vec, fea_vec.shape[1])
         return fea_vec
 
-    def create_encoder(self):
+    def create_encoder(self) -> Model:
+        """Prepare feature extractor."""
         model = InceptionV3(weights="imagenet")
         return Model(model.input, model.layers[-2].output)
 
     def get_image_paths(self):
+        """Get all images and captions from annotation file."""
         image_paths = set()
         for image_path in self.descriptions.keys():
             image_paths.add(image_path)
@@ -83,6 +103,7 @@ class DataGenerator:
         return image_paths, train_captions
 
     def get_vocabulary(self):
+        """Create vocabulary from all captions."""
         word_count_threshold = 5
 
         word_counts = {}
@@ -94,7 +115,8 @@ class DataGenerator:
                     vocab.add(w)
         return vocab
 
-    def create_tokenization_matrix(self):
+    def create_tokenization_matrix(self) -> Tuple:
+        """Create index->word and word->index dictionaries"""
         ixtoword = {}
         wordtoix = {}
         ix = 1
